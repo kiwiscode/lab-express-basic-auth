@@ -22,8 +22,8 @@ router.post("/signup", (req, res) => {
   const { username, password } = req.body;
 
   // Check if the username and the password are provided
-  const usernameNotProvided = !username || username === "";
-  const passwordNotProvided = !password || password === "";
+  const usernameNotProvided = !username;
+  const passwordNotProvided = !password;
 
   if (usernameNotProvided || passwordNotProvided) {
     res.render("auth/signup-form", {
@@ -51,7 +51,7 @@ router.post("/signup", (req, res) => {
         throw new Error("The username is taken");
       }
 
-      // Generating the salt string
+      // Generating the salt string pass to the next then block
       return bcrypt.genSalt(saltRounds);
     })
     .then((salt) => {
@@ -64,8 +64,12 @@ router.post("/signup", (req, res) => {
       // return User.create({ username, password: hashedPassword });
     })
     .then((createdUser) => {
+      console.log("User created successfully! => ", createdUser);
       // Redirect to the home `/` page after the successful signup
+      createdUser.password = null;
+
       req.session.user = createdUser;
+      console.log(req.session.user);
       res.redirect("/");
     })
     .catch((err) => {
@@ -86,12 +90,12 @@ router.post("/login", (req, res) => {
   const { username, password } = req.body;
 
   // Check if the username and the password are provided
-  const usernameNotProvided = !username || username === "";
-  const passwordNotProvided = !password || password === "";
-
-  if (usernameNotProvided || passwordNotProvided) {
+  // const usernameNotProvided = !username;
+  // const passwordNotProvided = !password;
+  console.log(username, password);
+  if (!username || !password) {
     res.render("auth/login-form", {
-      errorMessage: "Provide username and password.",
+      errorMessage: "first => Provide username and password.",
     });
 
     return;
@@ -104,7 +108,10 @@ router.post("/login", (req, res) => {
       user = foundUser;
 
       if (!foundUser) {
-        throw new Error("Wrong credentials");
+        // throw new Error("User not found");
+        res.render("auth/login-form", {
+          errorMessage: "User not found",
+        });
       }
 
       // Compare the passwords
@@ -112,7 +119,10 @@ router.post("/login", (req, res) => {
     })
     .then((isCorrectPassword) => {
       if (!isCorrectPassword) {
-        throw new Error("Wrong credentials");
+        // throw new Error("Password is wrong!");
+        res.render("auth/login-form", {
+          errorMessage: "Password is wrong",
+        });
       } else if (isCorrectPassword) {
         // Create the session + cookie and redirect the user
         // This line triggers the creation of the session in the DB,
@@ -122,8 +132,9 @@ router.post("/login", (req, res) => {
       }
     })
     .catch((err) => {
-      res.render("auth/login-form", {
-        errorMessage: "Provide username and password.",
+      console.log("134 error => ", err);
+      res.status(500).render("auth/login-form", {
+        errorMessage: "Internal server error",
       });
     });
 });
@@ -136,7 +147,7 @@ router.get("/logout", isLoggedIn, (req, res) => {
     if (err) {
       return res.render("error");
     }
-
+    res.clearCookie("connect.sid");
     // If session was deleted successfully redirect to the home page.
     res.redirect("/");
   });
